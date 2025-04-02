@@ -11,8 +11,13 @@ public class GameController : MonoBehaviour
     public CardStack deck;
 
     public Button hitButton;
-    public Button stickButton;
+    public Button standButton;
+    public Button doubleButton;
     public Button playAgainButton;
+    public int l;
+    public int m;
+    public bool playerBlackjack = false;
+    public bool dealerBlackjack = false;
 
     public Text winnerText;
     public Text playerTotal;
@@ -22,7 +27,7 @@ public class GameController : MonoBehaviour
     
     /*
      * Cards dealt to each player
-     * First player hits/sticks/bust
+     * First player hits/stands/bust
      * Dealer's turn; must have minimum of 17 score hand
      * Dealers cards; first card is hidden, subsequent cards are facing
      */
@@ -31,25 +36,44 @@ public class GameController : MonoBehaviour
 
     public void Hit()
     {
+        l++;
         player.Push(deck.Pop());
+        doubleButton.interactable = false;
         if (player.HandValue() > 21)
         {
             hitButton.interactable = false;
-            stickButton.interactable = false;
+            standButton.interactable = false;
+            doubleButton.interactable = false;
             StartCoroutine(DealersTurn());
         }
     }
 
-    public void Stick()
+    public void Stand()
     {
         hitButton.interactable = false;
-        stickButton.interactable = false;
+        standButton.interactable = false;
+        doubleButton.interactable = false;
+        StartCoroutine(DealersTurn());
+    }
+
+    public void DoubleDown()
+    {
+        hitButton.interactable = false;
+        standButton.interactable = false;
+        doubleButton.interactable = false;
+
+        playerBot.totalAmountMoney -= playerBot.betAmountMoney;
+        playerBot.betAmountMoney += playerBot.betAmountMoney;
+        player.Push(deck.Pop());
+
         StartCoroutine(DealersTurn());
     }
 
     public void PlayAgain()
     {
         playAgainButton.interactable = false;
+        playerBlackjack = false;
+        dealerBlackjack = false;
 
         player.GetComponent<CardStackView>().Clear();
         dealer.GetComponent<CardStackView>().Clear();
@@ -59,7 +83,8 @@ public class GameController : MonoBehaviour
         winnerText.text = "";
 
         hitButton.interactable = true;
-        stickButton.interactable = true;
+        standButton.interactable = true;
+        doubleButton.interactable = true;
 
         dealersFirstCard = -1;
 
@@ -79,10 +104,12 @@ public class GameController : MonoBehaviour
 
     void StartGame()
     {
+        l = 0;
+        m = 0;
         for (int i = 0; i < 2; i++)
         {
             player.Push(deck.Pop());
-            
+            TotalText();
         }
         HitDealer();
     }
@@ -108,6 +135,12 @@ public class GameController : MonoBehaviour
     {        
         TotalText();
         WaitForBet();
+        if(l < 1 && int.Parse(playerTotal.text) == 21)
+        {
+            playerBlackjack = true;
+            Stand();
+            l++;
+        }
     }
 
     void WaitForBet()
@@ -119,7 +152,9 @@ public class GameController : MonoBehaviour
                 StartGame();
 
                 hitButton.interactable = true;
-                stickButton.interactable = true;
+                standButton.interactable = true;
+                doubleButton.interactable = true;
+                
                 
                 playerBot.betHasBeenMade = false;
             }
@@ -133,12 +168,14 @@ public class GameController : MonoBehaviour
 
         // Dealear
         dealerTotal.text = dealer.HandValue().ToString();
+
+        playerBot.HitTheButtons();
     }
 
     IEnumerator DealersTurn()
     {
         hitButton.interactable = false;
-        stickButton.interactable = false;
+        standButton.interactable = false;
 
         CardStackView view = dealer.GetComponent<CardStackView>();
         view.Toggle(dealersFirstCard, true);
@@ -148,21 +185,55 @@ public class GameController : MonoBehaviour
         while (dealer.HandValue() < 17)
         {
             HitDealer();
+            m++;
             yield return new WaitForSeconds(1f);
         } 
 
-        if (player.HandValue() > 21 || (dealer.HandValue() >= player.HandValue() && dealer.HandValue() <= 21))
+        if(m < 2 && int.Parse(dealerTotal.text) == 21)
         {
-            winnerText.text = "Sorry-- you lose";
+            dealerBlackjack = true;
         }
-        else if (dealer.HandValue() > 21 || (player.HandValue() <= 21 && player.HandValue() > dealer.HandValue()))
+
+        if(playerBlackjack && !dealerBlackjack)
         {
             winnerText.text = "Winner, winner! Chicken dinner";
             playerBot.totalAmountMoney += playerBot.bettingAmount * 2;
+            playerBlackjack = false;
+            dealerBlackjack = false;
+        }
+        else if(!playerBlackjack && dealerBlackjack)
+        {
+            winnerText.text = "Sorry-- you lose";
+            playerBlackjack = false;
+            dealerBlackjack = false;
+        }
+        else if(playerBlackjack && dealerBlackjack)
+        {
+            winnerText.text ="Draw!";
+            playerBot.totalAmountMoney += playerBot.bettingAmount;
+            playerBlackjack = false;
+            dealerBlackjack = false;
         }
         else
         {
-            winnerText.text = "The house wins!";
+            if ((player.HandValue() > 21 && dealer.HandValue() <= 21) || (dealer.HandValue() > player.HandValue() && dealer.HandValue() <= 21))
+            {
+                winnerText.text = "Sorry-- you lose";
+            }
+            else if ((player.HandValue() <= 21 && player.HandValue() > dealer.HandValue()) || (player.HandValue() <= 21 && dealer.HandValue() > 21))
+            {
+                winnerText.text = "Winner, winner! Chicken dinner";
+                playerBot.totalAmountMoney += playerBot.bettingAmount * 2;
+            }
+            else if((dealer.HandValue() > 21 && player.HandValue() > 21) || (dealer.HandValue() == player.HandValue()))
+            {
+                winnerText.text ="Draw!";
+                playerBot.totalAmountMoney += playerBot.bettingAmount;
+            }
+            else
+            {
+                winnerText.text = "The house wins!";
+            }
         }
 
         yield return new WaitForSeconds(1f);

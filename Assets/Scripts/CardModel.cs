@@ -12,7 +12,14 @@ public class CardModel : MonoBehaviour
     {
         if (showFace)
         {
-            flipper.FlipCard(faces[cardIndex - 1], faces[cardIndex], cardIndex);
+            if (cardIndex > 0 && cardIndex < faces.Length)
+            {
+                flipper.FlipCard(faces[cardIndex - 1], faces[cardIndex], cardIndex);
+            }
+            else
+            {
+                Debug.LogError($"Invalid cardIndex: {cardIndex}, faces.Length: {faces.Length}");
+            }
         }
         else
         {

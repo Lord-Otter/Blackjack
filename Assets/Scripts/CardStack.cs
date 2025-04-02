@@ -5,6 +5,7 @@ using System.Collections.Generic;
 public class CardStack : MonoBehaviour
 {
     List<int> cards;
+    private PlayerBot playerBot;
 
     public bool isGameDeck;
 
@@ -113,7 +114,6 @@ public class CardStack : MonoBehaviour
                 total = total + 1;
             }
         }
-        //Debug.Log(total);
         return total;
     }
 
@@ -144,6 +144,8 @@ public class CardStack : MonoBehaviour
 
 	void Awake() 
     {
+        playerBot = GameObject.Find("PlayerBot").GetComponent<PlayerBot>();
+
         cards = new List<int>();
         if (isGameDeck)
         {

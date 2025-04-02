@@ -8,14 +8,22 @@ public class PlayerBot : MonoBehaviour
     private CardStack player;
     private CardStack dealer;
     public Button hitButton;
-    public Button stickButton;
+    public Button standButton;
+    public Button doubleButton;
     public Button playAgainButton;
     public Text totalAmount;
     public Text betAmount;
 
+    public Text playerTotal;
+    public Text dealerTotal;
+
     public int totalAmountMoney;
     public int betAmountMoney;
     public int bettingAmount;
+
+    [Header("Time Scale")]
+    public float timeScale;
+    [HideInInspector]public float lastTimeScale;
     [HideInInspector] public bool betHasBeenMade = false;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
@@ -29,8 +37,47 @@ public class PlayerBot : MonoBehaviour
     void Update()
     {
         BetMoney();
-        HitTheButtons();
+        //HitTheButtons();
         UpdateMoneyText();
+        TimeScale();
+    }
+
+    void TimeScale()
+    {
+        Time.timeScale = timeScale;
+
+        if (Input.GetKeyDown(KeyCode.P))
+        {
+            if (timeScale == 0)
+            {
+                timeScale = lastTimeScale;
+                Debug.Log($"Time Scale: {timeScale * 100}% ");
+            }
+            else
+            {
+                lastTimeScale = timeScale;
+                timeScale = 0;
+                Debug.Log("Stopping Time");
+            }
+        }
+        
+        if (Input.GetKeyDown(KeyCode.Alpha1))
+        {
+            timeScale = 1f;
+            Debug.Log($"Time Scale: {timeScale * 100}% ");
+        }
+
+        if (Input.GetKeyDown(KeyCode.Alpha2))
+        {
+            timeScale = 2f;
+            Debug.Log($"Time Scale: {timeScale * 100}% ");
+        }
+
+        if (Input.GetKeyDown(KeyCode.Alpha3))
+        {
+            timeScale = 10f;
+            Debug.Log($"Time Scale: {timeScale * 100}% ");
+        }
     }
 
     void UpdateMoneyText()
@@ -49,21 +96,34 @@ public class PlayerBot : MonoBehaviour
         }
     }
 
-    void HitTheButtons()
+    public void HitTheButtons()
     {
         if(playAgainButton.interactable)
         {
             gameController.PlayAgain();
         }
-
-        if(hitButton.interactable || stickButton.interactable) // It aint workin
-        {
-            if(player.HandValue() < 21)
+                  
+        if(hitButton.interactable)
+        {       
+            if(int.Parse(playerTotal.text) > 18)
             {
-                gameController.Stick();
+                gameController.Stand();
+            }
+            else
+            {
+                gameController.Hit();
             }
         }
 
+        if(doubleButton.interactable)
+        {
+            Debug.Log("HELP ME");
+            if(int.Parse(playerTotal.text) < 15)
+            {
+                gameController.DoubleDown();
+                Debug.Log("Double Down");
+            }
+        }
         
     }
 }
