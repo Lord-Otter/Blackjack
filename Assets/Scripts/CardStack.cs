@@ -6,7 +6,7 @@ public class CardStack : MonoBehaviour
 {
     List<int> cards;
     private PlayerBot playerBot;
-
+    public int aces;
     public bool isGameDeck;
 
     public bool HasCards
@@ -81,7 +81,7 @@ public class CardStack : MonoBehaviour
     public int HandValue()
     {
         int total = 0;
-        int aces = 0;
+        aces = 0;
 
         foreach (int card in GetCards())
         {
@@ -144,6 +144,7 @@ public class CardStack : MonoBehaviour
 
 	void Awake() 
     {
+        cards = new List<int>();
         playerBot = GameObject.Find("PlayerBot").GetComponent<PlayerBot>();
 
         cards = new List<int>();

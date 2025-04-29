@@ -4,11 +4,12 @@ using UnityEngine.UI;
 
 public class GameController : MonoBehaviour 
 {
-    int dealersFirstCard = -1;
+    [HideInInspector] public int dealersFirstCard = -1;
 
     public CardStack player;
     public CardStack dealer;
     public CardStack deck;
+    private GraphController graphController;
 
     public Button hitButton;
     public Button standButton;
@@ -18,12 +19,22 @@ public class GameController : MonoBehaviour
     public int m;
     public bool playerBlackjack = false;
     public bool dealerBlackjack = false;
+    public bool hasHit = false;
+    public bool softHand;
+    public bool canMakeMove;
+    private float elapsedTime;
+    private float timeWhenRestart;
+    [HideInInspector] public int currentRound = 0;
 
+    public Text currentRoundText;
     public Text winnerText;
     public Text playerTotal;
     public Text dealerTotal;
 
     public PlayerBot playerBot;
+
+    public enum LastHandOutcome {Win, Loss, Draw}
+    public LastHandOutcome lastHandOutcome;
     
     /*
      * Cards dealt to each player
@@ -37,6 +48,8 @@ public class GameController : MonoBehaviour
     public void Hit()
     {
         l++;
+        hasHit = true;
+        softHand = false;
         player.Push(deck.Pop());
         doubleButton.interactable = false;
         if (player.HandValue() > 21)
@@ -46,11 +59,13 @@ public class GameController : MonoBehaviour
             doubleButton.interactable = false;
             StartCoroutine(DealersTurn());
         }
+        StartCoroutine(PlayerMakeMove());
     }
 
     public void Stand()
     {
         hitButton.interactable = false;
+        softHand = false;
         standButton.interactable = false;
         doubleButton.interactable = false;
         StartCoroutine(DealersTurn());
@@ -59,6 +74,7 @@ public class GameController : MonoBehaviour
     public void DoubleDown()
     {
         hitButton.interactable = false;
+        softHand = false;
         standButton.interactable = false;
         doubleButton.interactable = false;
 
@@ -71,9 +87,13 @@ public class GameController : MonoBehaviour
 
     public void PlayAgain()
     {
+        timeWhenRestart = Time.time;
         playAgainButton.interactable = false;
+        softHand = false;
         playerBlackjack = false;
         dealerBlackjack = false;
+        hasHit = false;
+        softHand = false;
 
         player.GetComponent<CardStackView>().Clear();
         dealer.GetComponent<CardStackView>().Clear();
@@ -98,12 +118,21 @@ public class GameController : MonoBehaviour
     void Start()
     {
         playerBot = GameObject.Find("PlayerBot").GetComponent<PlayerBot>();
+        graphController = GameObject.Find("GraphController").GetComponent<GraphController>();
     }
 
     #endregion
 
     void StartGame()
     {
+        currentRound++;
+        graphController.UpdateGraph();
+        if(currentRound > 1)
+        {
+            //graphController.UpdateGraph();
+        }
+        playerBot.BetMoney();
+        currentRoundText.text = $"Round: {currentRound.ToString()}";
         l = 0;
         m = 0;
         for (int i = 0; i < 2; i++)
@@ -129,10 +158,20 @@ public class GameController : MonoBehaviour
             CardStackView view = dealer.GetComponent<CardStackView>();
             view.Toggle(card, true);
         }
+        CardStackView views = dealer.GetComponent<CardStackView>();
+        views.Toggle(dealersFirstCard, true);
     }
 
     void Update()
-    {        
+    {
+        if(!softHand)
+        {
+            if(player.aces > 0 && !hasHit)
+            {
+                softHand = true;
+            }
+        }
+
         TotalText();
         WaitForBet();
         if(l < 1 && int.Parse(playerTotal.text) == 21)
@@ -140,6 +179,16 @@ public class GameController : MonoBehaviour
             playerBlackjack = true;
             Stand();
             l++;
+        }
+
+        RestartIfStuck();
+    }
+
+    void RestartIfStuck()
+    {
+        if(Time.time - timeWhenRestart > 15)
+        {
+            PlayAgain();
         }
     }
 
@@ -157,6 +206,7 @@ public class GameController : MonoBehaviour
                 
                 
                 playerBot.betHasBeenMade = false;
+                StartCoroutine(PlayerMakeMove());
             }
         }
     }
@@ -168,8 +218,14 @@ public class GameController : MonoBehaviour
 
         // Dealear
         dealerTotal.text = dealer.HandValue().ToString();
+        
+        //playerBot.HitTheButtons();
+    }
 
-        playerBot.HitTheButtons();
+    IEnumerator PlayerMakeMove()
+    {
+        yield return new WaitForSeconds(1);
+        canMakeMove = true;
     }
 
     IEnumerator DealersTurn()
@@ -182,7 +238,7 @@ public class GameController : MonoBehaviour
         view.ShowCards();
         yield return new WaitForSeconds(1f);
 
-        while (dealer.HandValue() < 17)
+        while (dealer.HandValue() < 17 && player.HandValue() <= 21)
         {
             HitDealer();
             m++;
@@ -196,39 +252,48 @@ public class GameController : MonoBehaviour
 
         if(playerBlackjack && !dealerBlackjack)
         {
-            winnerText.text = "Winner, winner! Chicken dinner";
-            playerBot.totalAmountMoney += playerBot.bettingAmount * 2;
+            winnerText.text = "You Win!";
+            playerBot.totalAmountMoney += playerBot.lastBet * 2;
             playerBlackjack = false;
             dealerBlackjack = false;
         }
         else if(!playerBlackjack && dealerBlackjack)
         {
-            winnerText.text = "Sorry-- you lose";
+            winnerText.text = "You Lose!";
             playerBlackjack = false;
             dealerBlackjack = false;
         }
         else if(playerBlackjack && dealerBlackjack)
         {
             winnerText.text ="Draw!";
-            playerBot.totalAmountMoney += playerBot.bettingAmount;
+            playerBot.totalAmountMoney += playerBot.lastBet;
             playerBlackjack = false;
             dealerBlackjack = false;
         }
         else
         {
-            if ((player.HandValue() > 21 && dealer.HandValue() <= 21) || (dealer.HandValue() > player.HandValue() && dealer.HandValue() <= 21))
+            if (player.HandValue() > 21 || (dealer.HandValue() > player.HandValue() && dealer.HandValue() <= 21))
             {
-                winnerText.text = "Sorry-- you lose";
+                winnerText.color = Color.red;
+                winnerText.text = "You Lose!";
+                lastHandOutcome = LastHandOutcome.Loss;
+                playerBot.actualDifference = playerBot.difference;
             }
             else if ((player.HandValue() <= 21 && player.HandValue() > dealer.HandValue()) || (player.HandValue() <= 21 && dealer.HandValue() > 21))
             {
-                winnerText.text = "Winner, winner! Chicken dinner";
-                playerBot.totalAmountMoney += playerBot.bettingAmount * 2;
+                winnerText.color = Color.green;
+                winnerText.text = "You Win!";
+                lastHandOutcome = LastHandOutcome.Win;
+                playerBot.totalAmountMoney += playerBot.lastBet * 2;
+                playerBot.actualDifference = playerBot.difference;
             }
             else if((dealer.HandValue() > 21 && player.HandValue() > 21) || (dealer.HandValue() == player.HandValue()))
             {
+                winnerText.color = Color.gray;
                 winnerText.text ="Draw!";
-                playerBot.totalAmountMoney += playerBot.bettingAmount;
+                lastHandOutcome = LastHandOutcome.Draw;
+                playerBot.totalAmountMoney += playerBot.lastBet;
+                playerBot.actualDifference = playerBot.difference;
             }
             else
             {
