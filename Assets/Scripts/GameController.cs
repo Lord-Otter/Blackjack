@@ -1,9 +1,12 @@
 ﻿using UnityEngine;
 using System.Collections;
 using UnityEngine.UI;
+using System.Collections.Generic;
 
 public class GameController : MonoBehaviour 
 {
+    public int numberOfLoops;
+
     [HideInInspector] public int dealersFirstCard = -1;
 
     public CardStack player;
@@ -24,6 +27,7 @@ public class GameController : MonoBehaviour
     public bool canMakeMove;
     private float elapsedTime;
     private float timeWhenRestart;
+    private int numberOfResets;
     [HideInInspector] public int currentRound = 0;
 
     public Text currentRoundText;
@@ -35,6 +39,13 @@ public class GameController : MonoBehaviour
 
     public enum LastHandOutcome {Win, Loss, Draw}
     public LastHandOutcome lastHandOutcome;
+
+    public bool simulationEnd = false;
+
+    public List<int> deathRoundList = new List<int>();
+    public GameObject canvas1;
+    public GameObject canvas2;
+    private Transform camTransform;
     
     /*
      * Cards dealt to each player
@@ -119,6 +130,10 @@ public class GameController : MonoBehaviour
     {
         playerBot = GameObject.Find("PlayerBot").GetComponent<PlayerBot>();
         graphController = GameObject.Find("GraphController").GetComponent<GraphController>();
+        camTransform = GameObject.Find("Main Camera").GetComponent<Transform>();
+
+        numberOfResets = 0;
+        simulationEnd = false;
     }
 
     #endregion
@@ -143,6 +158,28 @@ public class GameController : MonoBehaviour
         HitDealer();
     }
 
+    public void ResetAll()
+    {
+        numberOfResets++;
+        if(numberOfResets >= numberOfLoops)
+        {
+            simulationEnd = true;
+
+            EndOfSimulation();
+        }
+        deathRoundList.Add(currentRound);
+        currentRound = 0;
+        playerBot.totalAmountMoney = playerBot.startingAmountMoney;
+    }
+
+    public void EndOfSimulation()
+    {
+        canvas1.SetActive(false);
+        canvas2.SetActive(true);
+        camTransform.position = new Vector3(-5.5f, 6f, -10f);
+
+    }
+
     void HitDealer()
     {
         int card = deck.Pop();
@@ -164,6 +201,11 @@ public class GameController : MonoBehaviour
 
     void Update()
     {
+        if(simulationEnd)
+        {
+            return;
+        }
+
         if(!softHand)
         {
             if(player.aces > 0 && !hasHit)
@@ -224,7 +266,7 @@ public class GameController : MonoBehaviour
 
     IEnumerator PlayerMakeMove()
     {
-        yield return new WaitForSeconds(1);
+        yield return new WaitForSeconds(0.01f);
         canMakeMove = true;
     }
 
@@ -242,7 +284,7 @@ public class GameController : MonoBehaviour
         {
             HitDealer();
             m++;
-            yield return new WaitForSeconds(1f);
+            yield return new WaitForSeconds(0.01f);
         } 
 
         if(m < 2 && int.Parse(dealerTotal.text) == 21)
@@ -301,7 +343,7 @@ public class GameController : MonoBehaviour
             }
         }
 
-        yield return new WaitForSeconds(1f);
+        yield return new WaitForSeconds(0.01f);
         playAgainButton.interactable = true;
     }
 }

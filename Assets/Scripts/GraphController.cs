@@ -1,4 +1,8 @@
+using Microsoft.Unity.VisualStudio.Editor;
+using UnityEngine.UI;
 using UnityEngine;
+using NUnit.Framework.Constraints;
+using System.Collections.Generic;
 
 public class GraphController : MonoBehaviour
 {
@@ -8,6 +12,8 @@ public class GraphController : MonoBehaviour
 
     private RectTransform cLineTransform;
     public GameObject graphDot;
+    public GraphDotBehaviour graphDotBehaviour;
+    public Dictionary<int, GraphDotBehaviour> dotDictionary = new Dictionary<int, GraphDotBehaviour>();
 
     public float maxValue;
     public float minValue;
@@ -35,22 +41,51 @@ public class GraphController : MonoBehaviour
 
     public void UpdateGraph()
     {
-        if(playerBot.actualDifference > maxValue)
+        maxValue = int.MinValue;
+        minValue = int.MaxValue;
+
+        foreach (Transform child in transform)
         {
-            maxValue = playerBot.actualDifference;
+            var dotComponent = child.GetComponent<GraphDotBehaviour>();
+            if (dotComponent != null)
+            {
+                float value = dotComponent.actualDifference;
+
+                if (value > maxValue) maxValue = value;
+                if (value < minValue) minValue = value;
+            }
         }
 
-        if(playerBot.actualDifference < minValue)
+        if(maxValue < 10)
         {
-            minValue = playerBot.actualDifference;
+            maxValue = 10;
         }
 
-        float cLinePosition = Mathf.Lerp(0, 500, (0 - minValue) / (maxValue - minValue));
+        if(minValue > -10)
+        {
+            minValue = -10;
+        }
+
+        float range = maxValue - minValue;
+        if (Mathf.Approximately(range, 0f)) range = 1f;
+
+        float cLinePosition = Mathf.Lerp(0, 500, (0 - minValue) / range);
 
         Vector2 pos = cLineTransform.anchoredPosition;
         pos.y = cLinePosition;
         cLineTransform.anchoredPosition = pos;
 
         GameObject dotObject = Instantiate(graphDot, this.transform);
+    }
+
+    public void RegisterDot(GraphDotBehaviour dot)
+    {
+        dotDictionary[dot.iD] = dot;
+    }
+
+    public void RemoveDot(GraphDotBehaviour dot)
+    {
+        if (dotDictionary.ContainsKey(dot.iD))
+            dotDictionary.Remove(dot.iD);
     }
 }

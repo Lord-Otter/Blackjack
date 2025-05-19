@@ -59,6 +59,11 @@ public class PlayerBot : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        if(gameController.simulationEnd)
+        {
+            return;
+        }
+
         BetMoney();
         if(gameController.canMakeMove)
         {
@@ -135,12 +140,23 @@ public class PlayerBot : MonoBehaviour
 
     void FlatBetting()
     {
-        if(betAmountMoney <= 0)
+        
+        if(totalAmountMoney > bettingAmount)
+        {
+            if(betAmountMoney <= 0)
+            {
+                betHasBeenMade = true;
+                totalAmountMoney -= bettingAmount;
+                betAmountMoney += bettingAmount;
+            }
+        }
+        else
         {
             betHasBeenMade = true;
-            totalAmountMoney -= bettingAmount;
-            betAmountMoney += bettingAmount;
+            betAmountMoney = totalAmountMoney;
+            totalAmountMoney = 0;
         }
+        
     }
     
     void LossDoubling()

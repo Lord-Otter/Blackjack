@@ -12,6 +12,7 @@ public class CardStackView : MonoBehaviour
     public bool faceUp = false;
     public bool reverseLayerOrder = false;
     public GameObject cardPrefab;
+    public GameController gameController;
 
     public void Toggle(int card, bool isFaceUp)
     {
@@ -34,6 +35,7 @@ public class CardStackView : MonoBehaviour
     {
         fetchedCards = new Dictionary<int, CardView>();
         deck = GetComponent<CardStack>();
+        gameController = GameObject.Find("Game Controller").GetComponent<GameController>();
         ShowCards();
 
         deck.CardRemoved += deck_CardRemoved;
